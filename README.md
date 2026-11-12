@@ -59,7 +59,7 @@ ComfyUI/custom_nodes/wep-conversation-tools/
 | Intent Input JSON | `conversation`（外接文本）；可选 `region`、`style`（外接文本） | `json`（STRING） |
 | 风格选择器 | `style`（外接文本）；可编辑名称、可新增的风格 PE 输入（外接文本） | `out`（STRING） |
 
-绘画历史转换的 `text`，以及 Intent Input JSON 的 `conversation`、`region`、`style` 均默认显示为**左侧连接接口**，不再显示节点内文本框，也不需要手动执行 Convert widget to input。为避免前端把 STRING 输入绘制成文本控件，输入声明使用通配连接类型 `*`；实际传入值仍必须是文本，非文本由原有解析器报错。输出保持 STRING。请连接上游 Text / String 等节点；`text` 和 `conversation` 必须连接，`region` 和 `style` 仍可不连接，未连接时省略对应 JSON 字段。
+绘画历史转换的 `text`，以及 Intent Input JSON 的 `conversation`、`region`、`style` 均默认显示为**左侧连接接口**，不再显示节点内文本框，也不需要手动执行 Convert widget to input。所有文本输入和输出统一使用 `STRING`，输入通过 `forceInput: true` 与前端扩展保持为连接口；不再使用会被 BA 类型校验拒绝的通配输入 `*`。请连接上游 Text / String 等节点；`text` 和 `conversation` 必须连接，`region` 和 `style` 仍可不连接，未连接时省略对应 JSON 字段。默认接口的非文本连线在执行前由后端类型校验拒绝；动态新增风格和直接调用解析器仍保留运行时文本校验。
 
 更新插件后重启或重新加载 ComfyUI 后端，再刷新页面并添加新版节点。前端扩展会恢复旧节点的连接口，移除旧文本控件及未配置的占位接口。旧文本备份在节点 properties 的 `dmcanvas_legacy_inputs` / `dmcanvas_legacy_widgets` 中，但不会自动创建外部文本节点；升级前仍应备份工作流，将文本放到外接 Text / String 节点并接线。
 
@@ -116,7 +116,7 @@ node --experimental-vm-modules tests/test_style_selector_frontend.mjs
 
 这些测试验证转换逻辑、两节点串联，以及按 ComfyUI 的包加载方式导入、三个节点注册、连接接口与文本校验、可选字段、风格路由和 Lazy Evaluation 请求协议；不代表每个 ComfyUI / WEP / ByteArtist 版本都通过实测。各插件目录内提供接口说明、独立测试和虚构示例。
 
-2026-11-12 当前接口修复版已在用户本地 ComfyUI 正式实例中验证：三个节点显示左侧连接口，选择器仅显示五个默认风格与新增按钮，没有配置文本框或编号占位列表；接外部文本后 JSON 与 3d emoji PE 在预览中正常显示。另有六项真实后端测试覆盖动态新增风格、选中分支惰性求值、仅修改名称配置时的缓存更新、可选元数据与文本校验。没有执行模型或生图，检查工作流使用虚构文本。此验证不代表 ByteArtist 已安装本版或通过测试。
+2026-11-12 此前接口版已在用户本地 ComfyUI 正式实例中验证圆点布局和文本执行；随后 BA 截图显示 `STRING → *` 连接被平台校验拒绝。本版同步将 Python 声明、前端新接口及旧接口迁移改为 `STRING`，保留外接接口、五个默认风格与新增按钮。七项真实后端测试覆盖 STRING 接线、动态新增风格、惰性求值、仅修改名称配置时的缓存更新、可选元数据、默认接口非文本连线拒绝及动态风格运行时文本校验；JavaScript 测试覆盖移除文本控件、旧通配接口迁移和保留连线。没有执行模型或生图，测试使用虚构文本。此验证不代表 ByteArtist 已安装本版或通过测试。
 
 真实后端测试需手动设置 `DMCANVAS_COMFYUI_TEST_URL`（例如本地测试实例的 `http://127.0.0.1:8001`），然后运行 `python3 -B -m unittest discover -s tests -p test_comfyui_server.py -v`。该测试会排入纯文本任务，应使用空闲测试实例；未设置环境变量时自动跳过。
 

@@ -26,7 +26,7 @@ class StyleInputs(dict):
     def __getitem__(self, name):
         if not is_style_input(name):
             raise KeyError(name)
-        return "*", {"forceInput": True, "lazy": True}
+        return "STRING", {"forceInput": True, "lazy": True}
 
 
 def normalize_name(value):
@@ -98,12 +98,12 @@ class StyleSelector:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "style": ("*", {
+                "style": ("STRING", {
                     "forceInput": True, "dmcanvas_style_names": DEFAULT_STYLE_NAMES,
                 }),
             },
             "optional": StyleInputs({
-                name: ("*", {"forceInput": True, "lazy": True})
+                name: ("STRING", {"forceInput": True, "lazy": True})
                 for name in STYLE_INPUTS
             }),
             "hidden": {
