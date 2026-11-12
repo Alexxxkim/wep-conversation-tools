@@ -1,0 +1,5 @@
+{
+  "conversation": "user:\nCreate a sticker of a cat wearing a blue hat\nai: 1\nuser:\n把 [图1] 的帽子改成红色",
+  "region": "[locale=zh-CN]",
+  "style": "style: cartoon"
+}

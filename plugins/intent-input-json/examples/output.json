@@ -1,0 +1,28 @@
+{
+  "current_request": {
+    "text": "把 [image1] 的帽子改成红色",
+    "attachments": []
+  },
+  "latest_result_id": "image1",
+  "history": [
+    {
+      "role": "user",
+      "text": "Create a sticker of a cat wearing a blue hat",
+      "attachments": []
+    },
+    {
+      "role": "assistant",
+      "text": "",
+      "attachments": [
+        {
+          "id": "image1",
+          "type": "image"
+        }
+      ]
+    }
+  ],
+  "style": "cartoon",
+  "region": {
+    "locale": "zh-CN"
+  }
+}
