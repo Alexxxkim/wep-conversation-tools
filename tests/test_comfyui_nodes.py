@@ -21,9 +21,10 @@ INTENT_CLASS = PACKAGE.NODE_CLASS_MAPPINGS["DMCanvasIntentInputJSONWithMetadata"
 
 
 class ComfyUINodeTests(unittest.TestCase):
-    def test_package_exports_both_node_mappings(self):
+    def test_package_exports_all_node_mappings(self):
         self.assertEqual(set(PACKAGE.NODE_CLASS_MAPPINGS), {
             "DMCanvasDrawingHistoryToConversation", "DMCanvasIntentInputJSONWithMetadata",
+            "DMCanvasStyleSelector",
         })
         self.assertEqual(set(PACKAGE.NODE_DISPLAY_NAME_MAPPINGS), set(PACKAGE.NODE_CLASS_MAPPINGS))
         self.assertEqual(set(PACKAGE.__all__), {
@@ -40,20 +41,22 @@ class ComfyUINodeTests(unittest.TestCase):
     def test_comfyui_node_contract(self):
         for node_class in PACKAGE.NODE_CLASS_MAPPINGS.values():
             with self.subTest(node_class=node_class.__name__):
-                self.assertEqual(node_class.CATEGORY, "DM Canvas/Conversation")
+                expected_category = (
+                    "DM Canvas/Style" if node_class.__name__ == "StyleSelector"
+                    else "DM Canvas/Conversation"
+                )
+                self.assertEqual(node_class.CATEGORY, expected_category)
                 self.assertTrue(callable(getattr(node_class(), node_class.FUNCTION)))
                 self.assertEqual(len(node_class.RETURN_TYPES), len(node_class.RETURN_NAMES))
                 self.assertTrue(all(value_type == "STRING" for value_type in node_class.RETURN_TYPES))
 
-    def test_history_text_widget_is_not_dynamic(self):
+    def test_history_text_is_a_required_input_socket(self):
         inputs = HISTORY_CLASS.INPUT_TYPES()
         self.assertEqual(set(inputs), {"required"})
         self.assertEqual(set(inputs["required"]), {"text"})
         value_type, options = inputs["required"]["text"]
         self.assertEqual(value_type, "STRING")
-        self.assertEqual(options["default"], "")
-        self.assertTrue(options["multiline"])
-        self.assertFalse(options["dynamicPrompts"])
+        self.assertEqual(options, {"forceInput": True})
 
     def test_intent_has_required_conversation_and_optional_metadata(self):
         inputs = INTENT_CLASS.INPUT_TYPES()
@@ -62,9 +65,17 @@ class ComfyUINodeTests(unittest.TestCase):
         for section in inputs.values():
             for value_type, options in section.values():
                 self.assertEqual(value_type, "STRING")
-                self.assertEqual(options["default"], "")
-                self.assertFalse(options["dynamicPrompts"])
-        self.assertTrue(inputs["optional"]["style"][1]["multiline"])
+                self.assertEqual(options, {"forceInput": True})
+
+    def test_optional_input_sockets_can_be_connected_independently(self):
+        node = INTENT_CLASS()
+        conversation = "user:\nDraw a cat"
+        with_region = json.loads(node.build_json(conversation, region="[locale=zh-CN]")[0])
+        self.assertEqual(with_region["region"], {"locale": "zh-CN"})
+        self.assertNotIn("style", with_region)
+        with_style = json.loads(node.build_json(conversation, style="style: cartoon")[0])
+        self.assertEqual(with_style["style"], "cartoon")
+        self.assertNotIn("region", with_style)
 
     def test_history_example_matches_original_script(self):
         history = (
