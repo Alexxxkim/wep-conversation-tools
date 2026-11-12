@@ -25,11 +25,19 @@
 5. 将绘画历史转换节点的 `conversation` 接到 Intent 节点的 `conversation`，将 `json` 接到下游文本输入。
 6. 风格选择器在 `DM Canvas/Style` 分类下，名称是 `Style Selector · 风格选择器`。按 [STYLE_SELECTOR.md](STYLE_SELECTOR.md) 将 `style` 与各路 PE 文本接入，`out` 接到原 Merge 的下游。
 
-绘画历史转换的 `text` 与 Intent Input JSON 的 `conversation`、`region`、`style` 已默认改为 STRING 输入接口，不再出现这四个文本控件，无需手动转换。`text` 和 `conversation` 必须连接上游文本输出；`region` 和 `style` 可不连接。不连接时默认空值，省略对应 JSON 字段。`warnings` 只接可选文本预览。
+绘画历史转换的 `text` 与 Intent Input JSON 的 `conversation`、`region`、`style` 已改为通配类型 `*` 的连接接口，运行时仍只接受文本，不再声明为会生成文本控件的 STRING 输入。`text` 和 `conversation` 必须连接上游文本输出；`region` 和 `style` 可不连接。不连接时默认空值，省略对应 JSON 字段。输出保持 STRING；`warnings` 只接可选文本预览。
 
 旧工作流中已保存的节点不一定自动更换布局。先保留旧节点里的文本和接线信息，更新插件并重启后重新添加新版节点，把原文本放入上游 Text / String 节点并接线，再切换使用新节点。不要只刷新网页或把旧节点显示的 Cached 当成新版接口已经加载。
 
-新版风格选择器的 `style` 与各路 PE 都是外接 STRING 输入口；底部按钮增加风格，右键菜单修改名称或删除接口。需要安装 `web/` 才能使用这些界面操作。更新后旧节点已保存的名称不会被覆盖，请重新添加节点以使用新的默认名称。
+新版风格选择器的 `style` 与各路 PE 都是外接端口；默认只声明五个具体风格，没有 `style_names` 配置框或编号占位列表。底部按钮增加风格，右键菜单修改名称或删除接口。需要安装并加载 `web/external_inputs.js` 才能使用这些界面操作。更新后旧节点已保存的自定义名称不会被覆盖，请重新添加节点以使用新的默认名称。
+
+## 有节点但没有接口 / 出现几十个 style 输入时
+
+2026-11-12 在一个 BA 工作台只读检查发现：`/object_info/DMCanvasStyleSelector` 已含新版 `forceInput` 定义，但 `/extensions` 没有本包的前端脚本。上一版依赖前端隐藏预铺的编号接口，脚本没加载就会全部露出；旧工作流还可能保留文本控件布局。
+
+本版移除后端预铺的编号接口，并用通配端口避免 STRING 文本控件。检查当前工作台的 `/extensions` 是否包含 `wep-conversation-tools/external_inputs.js`；如果没有，即使 Python 节点出现，也不能使用按钮新增和改名功能。需确认平台完整安装了 `web/`，且支持通过根目录 `WEB_DIRECTORY` 加载扩展；平台未暴露该扩展时，应请平台维护方排查，不能靠填 branch / commit 解决。
+
+只读检查并不表示 BA 已安装本版或执行通过。更新目录还需用本包的兼容入口覆盖旧版 `web/style_selector.js`，重启后端、刷新前端，并在备份工作流后重新添加节点进行验证。
 
 ## 找不到节点时
 

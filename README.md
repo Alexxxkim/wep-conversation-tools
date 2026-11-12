@@ -2,7 +2,7 @@
 
 三个 ComfyUI **Custom Node**：绘画历史 → Conversation → 意图输入 JSON，以及可重命名、可扩展的风格 PE 选择器。仓库同时保留原来的两个 WEP **Script / Inline Python** 脚本，转换逻辑保持一致。
 
-默认风格输入口依次显示为 `cutout`、`3d emoji`、`retro game`、`cartoon`、`none`。所有内容均通过外接 STRING 端口输入；风格名称可修改，并可新增、删除风格。
+默认风格输入口依次显示为 `cutout`、`3d emoji`、`retro game`、`cartoon`、`none`。所有内容均通过左侧外接端口输入；风格名称可修改，并可新增、删除风格。默认没有 `style_names` 配置框或 `style_1…` 占位列表。
 
 Three ComfyUI custom nodes for drawing history conversion, structured intent JSON, and lazy style-based PE selection, with the original standalone WEP Inline Python scripts preserved. No additional Python dependencies are required.
 
@@ -43,7 +43,7 @@ ComfyUI/custom_nodes/wep-conversation-tools/
 ├── __init__.py
 ├── nodes.py
 ├── style_selector.py
-├── web/style_selector.js
+├── web/external_inputs.js
 └── plugins/
     ├── drawing-history-to-conversation/drawing_history_to_conversation.py
     └── intent-input-json/intent_input_json.py
@@ -55,15 +55,15 @@ ComfyUI/custom_nodes/wep-conversation-tools/
 
 | 节点 | 输入 | 输出 |
 | --- | --- | --- |
-| 绘画历史转换 | `text`（STRING） | `conversation`、`warnings`（STRING） |
-| Intent Input JSON | `conversation`（STRING）；可选 `region`、`style`（STRING） | `json`（STRING） |
-| 风格选择器 | `style`（STRING）；可编辑名称、可新增的风格 PE 输入（STRING） | `out`（STRING） |
+| 绘画历史转换 | `text`（外接文本） | `conversation`、`warnings`（STRING） |
+| Intent Input JSON | `conversation`（外接文本）；可选 `region`、`style`（外接文本） | `json`（STRING） |
+| 风格选择器 | `style`（外接文本）；可编辑名称、可新增的风格 PE 输入（外接文本） | `out`（STRING） |
 
-绘画历史转换的 `text`，以及 Intent Input JSON 的 `conversation`、`region`、`style` 均默认显示为 **STRING 输入接口**（`forceInput: true`），不再显示节点内文本框，也不需要手动执行 Convert widget to input。请连接上游 Text / String 等节点；`text` 和 `conversation` 必须连接，`region` 和 `style` 仍可不连接，未连接时省略对应 JSON 字段。
+绘画历史转换的 `text`，以及 Intent Input JSON 的 `conversation`、`region`、`style` 均默认显示为**左侧连接接口**，不再显示节点内文本框，也不需要手动执行 Convert widget to input。为避免前端把 STRING 输入绘制成文本控件，输入声明使用通配连接类型 `*`；实际传入值仍必须是文本，非文本由原有解析器报错。输出保持 STRING。请连接上游 Text / String 等节点；`text` 和 `conversation` 必须连接，`region` 和 `style` 仍可不连接，未连接时省略对应 JSON 字段。
 
-更新插件后重启或重新加载 ComfyUI 后端，再添加新版节点。旧工作流中保存的文本控件和节点布局不保证自动迁移；先保留原文本与连接信息，再重新添加节点并接线，不要把原文本当成已自动转入输入端口。
+更新插件后重启或重新加载 ComfyUI 后端，再刷新页面并添加新版节点。前端扩展会恢复旧节点的连接口，移除旧文本控件及未配置的占位接口。旧文本备份在节点 properties 的 `dmcanvas_legacy_inputs` / `dmcanvas_legacy_widgets` 中，但不会自动创建外部文本节点；升级前仍应备份工作流，将文本放到外接 Text / String 节点并接线。
 
-风格选择器的 `style` 和每一路 PE 也都是左侧外接 STRING 端口，不在节点内填写 PE 文本。点击 **+ 新增风格接口**；右键节点选择 **修改风格名称** 或 **删除风格接口**。名称和新增接口随工作流保存，重命名不会断开连线。详见 [STYLE_SELECTOR.md](STYLE_SELECTOR.md)。
+风格选择器的 `style` 和每一路 PE 也都是左侧外接端口，不在节点内填写 PE 文本。点击 **+ 新增风格接口**；右键节点选择 **修改风格名称** 或 **删除风格接口**。名称配置保存在工作流 properties 的 `dmcanvas_style_names` 中，重命名不会断开连线。详见 [STYLE_SELECTOR.md](STYLE_SELECTOR.md)。
 
 ```text
 历史对话文本 → 绘画历史转换.text
@@ -114,9 +114,11 @@ python3 -B -m unittest discover -s tests -v
 node --experimental-vm-modules tests/test_style_selector_frontend.mjs
 ```
 
-这些测试验证转换逻辑、两节点串联，以及按 ComfyUI 的包加载方式导入、三个节点注册、STRING 输入输出、可选字段、风格路由和 Lazy Evaluation 请求协议；不代表已在实际 ComfyUI 调度器或每个 ComfyUI / WEP / ByteArtist 版本中实测界面或安装行为。各插件目录内提供接口说明、独立测试和虚构示例。
+这些测试验证转换逻辑、两节点串联，以及按 ComfyUI 的包加载方式导入、三个节点注册、连接接口与文本校验、可选字段、风格路由和 Lazy Evaluation 请求协议；不代表每个 ComfyUI / WEP / ByteArtist 版本都通过实测。各插件目录内提供接口说明、独立测试和虚构示例。
 
-2026-11-12 已另在用户现有本地 ComfyUI 实例中验证：三个节点接外部文本来源后正常执行，JSON 与自定义水彩 PE 在 Show Text 中显示；按钮新增铅笔接口、菜单将 Cutout 改为剪纸均成功，七路风格配置和连线已保存到独立检查工作流。没有执行模型或生图，也没有修改原业务工作流。此验证不代表 ByteArtist 工作台已更新或通过测试。
+2026-11-12 当前接口修复版已在用户本地 ComfyUI 正式实例中验证：三个节点显示左侧连接口，选择器仅显示五个默认风格与新增按钮，没有配置文本框或编号占位列表；接外部文本后 JSON 与 3d emoji PE 在预览中正常显示。另有六项真实后端测试覆盖动态新增风格、选中分支惰性求值、仅修改名称配置时的缓存更新、可选元数据与文本校验。没有执行模型或生图，检查工作流使用虚构文本。此验证不代表 ByteArtist 已安装本版或通过测试。
+
+真实后端测试需手动设置 `DMCANVAS_COMFYUI_TEST_URL`（例如本地测试实例的 `http://127.0.0.1:8001`），然后运行 `python3 -B -m unittest discover -s tests -p test_comfyui_server.py -v`。该测试会排入纯文本任务，应使用空闲测试实例；未设置环境变量时自动跳过。
 
 ## 公开发布范围
 

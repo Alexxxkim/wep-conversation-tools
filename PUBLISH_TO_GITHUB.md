@@ -4,7 +4,7 @@
 
 ## 更新已经创建的仓库
 
-- 仓库根目录必须包含 `__init__.py`、`nodes.py`、`style_selector.py`、`plugins/`、`web/`。前端扩展 `web/style_selector.js` 提供可扩展风格接口，不能遗漏。
+- 仓库根目录必须包含 `__init__.py`、`nodes.py`、`style_selector.py`、`plugins/`、`web/`。前端扩展 `web/external_inputs.js` 提供可扩展风格接口与旧控件迁移，不能遗漏；`web/style_selector.js` 是兼容入口，需覆盖旧实现。
 - 上传新增入口、节点接口、安装说明和测试，并更新根目录 README。
 - 将变更提交到 `main` 后，ByteArtist 插件下载入口选择 `branch`，填写 `main`。
 - 旧的纯 WEP commit 和早期独立 WEP ZIP 不会自动变为 ComfyUI 插件；应下载最新完整仓库。
@@ -48,7 +48,7 @@ wep-conversation-tools/
 ├── PUBLISH_TO_GITHUB.md
 ├── .gitignore
 ├── web/
-│   └── style_selector.js
+│   └── external_inputs.js
 ├── plugins/
 │   ├── drawing-history-to-conversation/
 │   │   ├── drawing_history_to_conversation.py

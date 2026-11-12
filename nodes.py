@@ -33,7 +33,7 @@ class DrawingHistoryToConversation:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING", {"forceInput": True}),
+                "text": ("*", {"forceInput": True}),
             },
         }
 
@@ -53,11 +53,11 @@ class IntentInputJSON:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "conversation": ("STRING", {"forceInput": True}),
+                "conversation": ("*", {"forceInput": True}),
             },
             "optional": {
-                "region": ("STRING", {"forceInput": True}),
-                "style": ("STRING", {"forceInput": True}),
+                "region": ("*", {"forceInput": True}),
+                "style": ("*", {"forceInput": True}),
             },
         }
 
