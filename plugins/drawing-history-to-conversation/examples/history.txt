@@ -1,0 +1,8 @@
+[1] 用户 · 2026-01-01 09:00:00
+Create a sticker of a cat wearing a blue hat
+
+[2] AI · 2026-01-01 09:00:01
+Here is the sticker. [图1]
+
+[3] 用户 · 2026-01-01 09:01:00
+把 [图1] 的帽子改成红色

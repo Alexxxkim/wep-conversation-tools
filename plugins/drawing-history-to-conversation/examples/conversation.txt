@@ -1,0 +1,5 @@
+user:
+Create a sticker of a cat wearing a blue hat
+ai: 1
+user:
+把 [图1] 的帽子改成红色
