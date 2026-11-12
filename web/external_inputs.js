@@ -32,10 +32,10 @@ function resizeNode(node) {
 function ensureSocket(node, name, optional = false, label) {
     let input = node.inputs?.find((entry) => entry.name === name);
     if (!input) {
-        node.addInput(name, "*", optional ? { shape: 7 } : {});
+        node.addInput(name, "STRING", optional ? { shape: 7 } : {});
         input = node.inputs.find((entry) => entry.name === name);
     }
-    input.type = "*";
+    input.type = "STRING";
     delete input.widget;
     if (label !== undefined) input.label = label;
 }
