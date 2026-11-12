@@ -56,7 +56,7 @@ class ComfyUINodeTests(unittest.TestCase):
         self.assertEqual(set(inputs), {"required"})
         self.assertEqual(set(inputs["required"]), {"text"})
         value_type, options = inputs["required"]["text"]
-        self.assertEqual(value_type, "*")
+        self.assertEqual(value_type, "STRING")
         self.assertEqual(options, {"forceInput": True})
 
     def test_intent_has_required_conversation_and_optional_metadata(self):
@@ -65,8 +65,19 @@ class ComfyUINodeTests(unittest.TestCase):
         self.assertEqual(set(inputs["optional"]), {"region", "style"})
         for section in inputs.values():
             for value_type, options in section.values():
-                self.assertEqual(value_type, "*")
+                self.assertEqual(value_type, "STRING")
                 self.assertEqual(options, {"forceInput": True})
+
+    def test_text_outputs_match_every_default_and_dynamic_input_type(self):
+        for node_class in PACKAGE.NODE_CLASS_MAPPINGS.values():
+            inputs = node_class.INPUT_TYPES()
+            for section_name in ("required", "optional"):
+                for input_name, (value_type, options) in inputs.get(section_name, {}).items():
+                    with self.subTest(node_class=node_class.__name__, input_name=input_name):
+                        self.assertEqual(value_type, HISTORY_CLASS.RETURN_TYPES[0])
+                        self.assertTrue(options["forceInput"])
+            if node_class.__name__ == "StyleSelector":
+                self.assertEqual(inputs["optional"]["style_12"][0], "STRING")
 
     def test_optional_input_sockets_can_be_connected_independently(self):
         node = INTENT_CLASS()

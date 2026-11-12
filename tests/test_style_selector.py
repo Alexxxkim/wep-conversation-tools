@@ -45,7 +45,7 @@ class StyleSelectorTests(unittest.TestCase):
         self.assertEqual(len(inputs["optional"]), 5)
         self.assertEqual(inputs["hidden"], {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"})
         value_type, options = inputs["required"]["style"]
-        self.assertEqual(value_type, "*")
+        self.assertEqual(value_type, "STRING")
         self.assertFalse(options.get("lazy", False))
         self.assertTrue(options["forceInput"])
         self.assertNotIn("default", options)
@@ -54,7 +54,7 @@ class StyleSelectorTests(unittest.TestCase):
         inputs = STYLE_CLASS.INPUT_TYPES()
         for name, (value_type, options) in inputs["optional"].items():
             with self.subTest(name=name):
-                self.assertEqual(value_type, "*")
+                self.assertEqual(value_type, "STRING")
                 self.assertEqual(options, {"forceInput": True, "lazy": True})
 
     def test_default_configuration_matches_requested_lowercase_names(self):
@@ -70,7 +70,7 @@ class StyleSelectorTests(unittest.TestCase):
         self.assertEqual(list(serialized["optional"]), list(BRANCHES.values()))
         self.assertNotIn("style_names", serialized["required"])
         self.assertNotIn("style_1", serialized["optional"])
-        self.assertEqual(inputs["optional"]["style_12"], ("*", {"forceInput": True, "lazy": True}))
+        self.assertEqual(inputs["optional"]["style_12"], ("STRING", {"forceInput": True, "lazy": True}))
         self.assertIn("style_12", inputs["optional"])
         for name in ("style_0", "style_01", "unexpected"):
             with self.subTest(name=name):

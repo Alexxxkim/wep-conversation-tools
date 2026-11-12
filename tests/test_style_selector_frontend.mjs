@@ -27,8 +27,8 @@ await module.evaluate();
 class BaseNode {
     constructor(fields) {
         this.properties = {};
-        this.inputs = fields.map((name) => ({ name, type: "*", link: null }));
-        this.widgets = [];
+        this.inputs = fields.map((name) => ({ name, type: "STRING", link: null, widget: { name } }));
+        this.widgets = fields.map((name) => ({ name, value: "" }));
         this.onNodeCreated();
     }
     configure(serializedNode) {
@@ -59,7 +59,7 @@ class IntentNode extends BaseNode {
 }
 extension.beforeRegisterNodeDef(SelectorNode, {
     name: "DMCanvasStyleSelector",
-    input: { required: { style: ["*", { forceInput: true, dmcanvas_style_names: defaults }] } },
+    input: { required: { style: ["STRING", { forceInput: true, dmcanvas_style_names: defaults }] } },
 });
 extension.beforeRegisterNodeDef(HistoryNode, { name: "DMCanvasDrawingHistoryToConversation" });
 extension.beforeRegisterNodeDef(IntentNode, { name: "DMCanvasIntentInputJSONWithMetadata" });
@@ -70,7 +70,7 @@ const menu = (node) => { const options = []; node.getExtraMenuOptions(null, opti
 const node = new SelectorNode();
 assert.deepEqual(node.inputs.map((input) => input.name), ["style", ...Object.keys(defaults)]);
 assert.deepEqual(node.inputs.slice(1).map((input) => input.label), ["cutout", "3d emoji", "retro game", "cartoon", "none"]);
-assert.ok(node.inputs.every((input) => input.type === "*" && !input.widget));
+assert.ok(node.inputs.every((input) => input.type === "STRING" && !input.widget));
 assert.equal(node.widgets.length, 1);
 assert.equal(node.widgets[0].type, "button");
 assert.equal(node.widgets[0].options.serialize, false);
@@ -79,6 +79,8 @@ assert.deepEqual(configuration(node), defaults);
 await add(node, "水彩");
 assert.deepEqual(configuration(node).style_1, ["水彩"]);
 assert.equal(node.inputs.at(-1).label, "水彩");
+assert.equal(node.inputs.at(-1).type, "STRING");
+assert.equal(node.inputs.at(-1).widget, undefined);
 for (let index = 2; index <= 8; index += 1) await add(node, `Custom ${index}`);
 assert.equal(Object.keys(configuration(node)).length, 13);
 
@@ -103,6 +105,7 @@ assert.deepEqual(configuration(reloaded), configuration(node));
 assert.equal(reloaded.inputs.find((input) => input.name === "cartoon").link, 123);
 assert.equal(reloaded.inputs.find((input) => input.name === "style_1").label, "水彩");
 assert.equal(reloaded.widgets.length, 1);
+assert.ok(reloaded.inputs.every((input) => input.type === "STRING" && !input.widget));
 
 menu(node)[2].submenu.options.find((entry) => entry.content === "水彩").callback();
 assert.equal(configuration(node).style_1, undefined);
@@ -115,6 +118,7 @@ const fullConfig = configuration(node);
 await node.widgets[0].callback();
 assert.deepEqual(configuration(node), fullConfig);
 assert.equal(alerts.at(-1).title, "风格接口已满");
+assert.ok(node.inputs.every((input) => input.type === "STRING" && !input.widget));
 
 const legacy = new SelectorNode();
 legacy.widgets.push({ name: "style", value: "cartoon" }, { name: "style_names", value: JSON.stringify(defaults) });
@@ -141,7 +145,17 @@ legacyCustom.configure({
 });
 assert.deepEqual(configuration(legacyCustom), customNames);
 assert.equal(legacyCustom.inputs.at(-1).link, 456);
-assert.equal(legacyCustom.inputs.at(-1).type, "*");
+assert.equal(legacyCustom.inputs.at(-1).type, "STRING");
+
+for (const NodeClass of [SelectorNode, HistoryNode, IntentNode]) {
+    const migrated = new NodeClass();
+    const savedInputs = migrated.inputs.map((input, index) => ({ ...input, type: "*", link: 900 + index }));
+    const savedProperties = structuredClone(migrated.properties);
+    migrated.configure({ inputs: savedInputs, properties: savedProperties, widgets_values: [] });
+    assert.ok(migrated.inputs.every((input) => input.type === "STRING" && !input.widget));
+    assert.deepEqual(migrated.inputs.map((input) => input.link), savedInputs.map((input) => input.link));
+    assert.deepEqual(migrated.properties, savedProperties);
+}
 
 for (const [NodeClass, fields, values] of [
     [HistoryNode, ["text"], ["Original history"]],
@@ -157,7 +171,7 @@ for (const [NodeClass, fields, values] of [
     });
     assert.deepEqual(textNode.inputs.map((input) => input.name), fields);
     assert.equal(textNode.inputs[0].link, 789);
-    assert.ok(textNode.inputs.every((input) => input.type === "*" && !input.widget));
+    assert.ok(textNode.inputs.every((input) => input.type === "STRING" && !input.widget));
     assert.equal(textNode.widgets.length, 0);
     assert.deepEqual(textNode.properties.dmcanvas_legacy_inputs, Object.fromEntries(fields.map((name, index) => [name, values[index]])));
 }
@@ -168,4 +182,4 @@ await add(fallback, "Legacy dialog style");
 assert.deepEqual(configuration(fallback).style_1, ["Legacy dialog style"]);
 await add(fallback, "cartoon");
 assert.match(alerts.at(-1).message, /名称重复/);
-console.log("Frontend checks passed: sockets on all nodes, five defaults only, add/rename/remove, save/reload, legacy text backups and dialogs, and 64-style limit.");
+console.log("Frontend checks passed: STRING sockets without text widgets on all nodes, wildcard migration preserving links, five defaults only, add/rename/remove, save/reload, legacy text backups and dialogs, and 64-style limit.");

@@ -66,10 +66,12 @@ class ComfyUIServerTests(unittest.TestCase):
             inputs = schemas[node_name]["input"]
             combined = {**inputs["required"], **inputs.get("optional", {})}
             self.assertEqual(list(combined), fields)
-            self.assertTrue(all(specification[0] == "*" for specification in combined.values()))
+            self.assertTrue(all(specification[0] == "STRING" and specification[1]["forceInput"] for specification in combined.values()))
         selector = schemas["DMCanvasStyleSelector"]["input"]
         self.assertEqual(list(selector["required"]), ["style"])
         self.assertEqual(list(selector["optional"]), ["cutout", "emoji", "retro", "cartoon", "empty"])
+        self.assertTrue(all(specification[0] == "STRING" and specification[1]["forceInput"]
+                            for specification in {**selector["required"], **selector["optional"]}.values()))
         self.assertTrue(any("wep-conversation-tools/external_inputs.js" in path for path in request_json("/extensions")))
 
     def test_history_to_intent_with_external_metadata(self):
@@ -113,9 +115,26 @@ class ComfyUIServerTests(unittest.TestCase):
         del prompt["3"]["inputs"]["style_1"]
         self.assertEqual(self.output_text(self.execute(prompt, {"style_1": ["Watercolor"]})), "")
 
-    def test_selected_nontext_value_is_rejected_at_runtime(self):
+    def test_nontext_default_connection_is_rejected_before_execution(self):
+        prompt = self.selector_prompt()
+        prompt["2"] = {"class_type": "PrimitiveInt", "inputs": {"value": 42}}
+        del prompt["3"]["inputs"]["style_1"]
+        prompt["3"]["inputs"]["cutout"] = ["2", 0]
+        with self.assertRaises(HTTPError) as caught:
+            request_json("/prompt", {"prompt": prompt})
+        self.assertEqual(caught.exception.code, 400)
+        error = json.loads(caught.exception.read())
+        mismatches = [entry for node in error["node_errors"].values()
+                      for entry in node["errors"] if entry["type"] == "return_type_mismatch"]
+        self.assertEqual(len(mismatches), 1, error)
+        self.assertEqual(mismatches[0]["extra_info"]["input_name"], "cutout")
+        self.assertEqual(mismatches[0]["extra_info"]["received_type"], "INT")
+        self.assertEqual(mismatches[0]["extra_info"]["input_config"][0], "STRING")
+
+    def test_dynamic_nontext_value_is_rejected_at_runtime(self):
         prompt = self.selector_prompt()
         prompt["2"] = {"class_type": "PrimitiveInt", "inputs": {"value": 42}}
         result = self.execute(prompt, {"style_1": ["Watercolor"]})
         self.assertEqual(result["status"]["status_str"], "error")
-        self.assertTrue(any("输入必须是文本" in message[1].get("exception_message", "") for message in result["status"]["messages"]))
+        self.assertTrue(any("输入必须是文本" in message[1].get("exception_message", "")
+                            for message in result["status"]["messages"]))
