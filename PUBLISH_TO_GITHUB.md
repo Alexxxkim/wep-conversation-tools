@@ -1,10 +1,10 @@
 # 一步步上传到 GitHub 公共仓库
 
-这两个相互配合的节点放在**一个公共仓库**：`https://github.com/Alexxxkim/wep-conversation-tools`。ComfyUI 安装整个仓库，一次注册两个节点；WEP 使用者仍可分别复制两个原始脚本。
+三个节点放在**一个公共仓库**：`https://github.com/Alexxxkim/wep-conversation-tools`。ComfyUI 安装整个仓库，一次注册绘画历史转换、Intent Input JSON 和风格选择器；WEP 使用者仍可分别复制两个原始脚本。
 
 ## 更新已经创建的仓库
 
-- 仓库根目录必须包含 `__init__.py`、`nodes.py`、`plugins/`。根目录的 ComfyUI 适配层缺一不可。
+- 仓库根目录必须包含 `__init__.py`、`nodes.py`、`style_selector.py`、`plugins/`。根目录的 ComfyUI 适配层缺一不可。
 - 上传新增入口、节点接口、安装说明和测试，并更新根目录 README。
 - 将变更提交到 `main` 后，ByteArtist 插件下载入口选择 `branch`，填写 `main`。
 - 旧的纯 WEP commit 和早期独立 WEP ZIP 不会自动变为 ComfyUI 插件；应下载最新完整仓库。
@@ -20,7 +20,7 @@
 1. 登录 <https://github.com>。
 2. 打开 <https://github.com/new>。
 3. Repository name 填 `wep-conversation-tools`（或你喜欢的名称）。
-4. Description 可填：`ComfyUI custom nodes for drawing history conversion and structured intent JSON, with WEP scripts preserved.`
+4. Description 可填：`ComfyUI custom nodes for drawing history conversion, intent JSON and style PE selection, with WEP scripts preserved.`
 5. 选择 **Public**。README 已在包内准备好，不必再让 GitHub 初始化 README。
 6. 点击 **Create repository**。
 
@@ -28,9 +28,9 @@
 
 1. 如果仓库为空，在页面上选择 **uploading an existing file**；如果已有文件，选择 **Add file → Upload files**。
 2. 解压仓库 ZIP，打开里面的 `wep-conversation-tools` 文件夹。
-3. 拖入**文件夹里面的内容**：`__init__.py`、`nodes.py`、`README.md`、本说明、`BYTEARTIST_INSTALL.md`、`plugins` 文件夹、`tests` 文件夹等。不要只上传 ZIP，也不要再套一层 `wep-conversation-tools` 目录。
+3. 拖入**文件夹里面的内容**：`__init__.py`、`nodes.py`、`style_selector.py`、`README.md`、`STYLE_SELECTOR.md`、本说明、`BYTEARTIST_INSTALL.md`、`plugins` 文件夹、`tests` 文件夹等。不要只上传 ZIP，也不要再套一层 `wep-conversation-tools` 目录。
 4. 检查预览：仓库根目录应有 `__init__.py`、`nodes.py`、`README.md`；两个原始脚本应在 `plugins/` 的对应子目录中。
-5. Commit message 填：`Add ComfyUI conversation nodes`。
+5. Commit message 填：`Add ComfyUI style selector`。
 6. 点击 **Commit changes**。
 
 若浏览器没有带上隐藏文件 `.gitignore`，它不是运行必需文件；可稍后用 **Add file → Create new file**，按包内内容补充。
@@ -41,7 +41,9 @@
 wep-conversation-tools/
 ├── __init__.py
 ├── nodes.py
+├── style_selector.py
 ├── README.md
+├── STYLE_SELECTOR.md
 ├── BYTEARTIST_INSTALL.md
 ├── PUBLISH_TO_GITHUB.md
 ├── .gitignore
@@ -58,7 +60,8 @@ wep-conversation-tools/
 │       └── tests/
 └── tests/
     ├── test_comfyui_nodes.py
-    └── test_pipeline.py
+    ├── test_pipeline.py
+    └── test_style_selector.py
 ```
 
 ## 第 4 步：检查展示与下载

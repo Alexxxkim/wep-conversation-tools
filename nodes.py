@@ -2,6 +2,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+from .style_selector import StyleSelector
+
 
 PLUGIN_DIRECTORY = Path(__file__).resolve().parent / "plugins"
 CATEGORY = "DM Canvas/Conversation"
@@ -31,9 +33,7 @@ class DrawingHistoryToConversation:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING", {
-                    "default": "", "multiline": True, "dynamicPrompts": False,
-                }),
+                "text": ("STRING", {"forceInput": True}),
             },
         }
 
@@ -53,17 +53,11 @@ class IntentInputJSON:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "conversation": ("STRING", {
-                    "default": "", "multiline": True, "dynamicPrompts": False,
-                }),
+                "conversation": ("STRING", {"forceInput": True}),
             },
             "optional": {
-                "region": ("STRING", {
-                    "default": "", "multiline": False, "dynamicPrompts": False,
-                }),
-                "style": ("STRING", {
-                    "default": "", "multiline": True, "dynamicPrompts": False,
-                }),
+                "region": ("STRING", {"forceInput": True}),
+                "style": ("STRING", {"forceInput": True}),
             },
         }
 
@@ -81,11 +75,13 @@ class IntentInputJSON:
 NODE_CLASS_MAPPINGS = {
     "DMCanvasDrawingHistoryToConversation": DrawingHistoryToConversation,
     "DMCanvasIntentInputJSONWithMetadata": IntentInputJSON,
+    "DMCanvasStyleSelector": StyleSelector,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "DMCanvasDrawingHistoryToConversation": "Drawing History to Conversation · 绘画历史转换",
     "DMCanvasIntentInputJSONWithMetadata": "Intent Input JSON",
+    "DMCanvasStyleSelector": "Style Selector · 风格选择器",
 }
 
 
