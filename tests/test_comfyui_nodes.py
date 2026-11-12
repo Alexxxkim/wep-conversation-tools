@@ -28,8 +28,9 @@ class ComfyUINodeTests(unittest.TestCase):
         })
         self.assertEqual(set(PACKAGE.NODE_DISPLAY_NAME_MAPPINGS), set(PACKAGE.NODE_CLASS_MAPPINGS))
         self.assertEqual(set(PACKAGE.__all__), {
-            "NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS",
+            "NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY",
         })
+        self.assertTrue((REPOSITORY_DIRECTORY / PACKAGE.WEB_DIRECTORY / "external_inputs.js").is_file())
 
     def test_new_intent_type_does_not_override_legacy_plugin(self):
         self.assertNotIn("DMCanvasIntentInputJSON", PACKAGE.NODE_CLASS_MAPPINGS)
@@ -55,7 +56,7 @@ class ComfyUINodeTests(unittest.TestCase):
         self.assertEqual(set(inputs), {"required"})
         self.assertEqual(set(inputs["required"]), {"text"})
         value_type, options = inputs["required"]["text"]
-        self.assertEqual(value_type, "STRING")
+        self.assertEqual(value_type, "*")
         self.assertEqual(options, {"forceInput": True})
 
     def test_intent_has_required_conversation_and_optional_metadata(self):
@@ -64,7 +65,7 @@ class ComfyUINodeTests(unittest.TestCase):
         self.assertEqual(set(inputs["optional"]), {"region", "style"})
         for section in inputs.values():
             for value_type, options in section.values():
-                self.assertEqual(value_type, "STRING")
+                self.assertEqual(value_type, "*")
                 self.assertEqual(options, {"forceInput": True})
 
     def test_optional_input_sockets_can_be_connected_independently(self):

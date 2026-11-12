@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import math
 from pathlib import Path
 import sys
 import unittest
@@ -17,8 +18,8 @@ sys.modules[PACKAGE_NAME] = PACKAGE
 SPECIFICATION.loader.exec_module(PACKAGE)
 STYLE_CLASS = PACKAGE.NODE_CLASS_MAPPINGS["DMCanvasStyleSelector"]
 BRANCHES = {
-    "Cutout": "cutout", "3D Emoji": "emoji", "Retro Game": "retro",
-    "Cartoon": "cartoon", "": "empty",
+    "cutout": "cutout", "3d emoji": "emoji", "retro game": "retro",
+    "cartoon": "cartoon", "none": "empty",
 }
 
 
@@ -37,25 +38,113 @@ class StyleSelectorTests(unittest.TestCase):
             "Style Selector · 风格选择器",
         )
 
-    def test_required_style_and_five_optional_inputs_match_screenshot(self):
+    def test_style_and_all_style_contents_are_external_input_sockets(self):
         inputs = STYLE_CLASS.INPUT_TYPES()
         self.assertEqual(list(inputs["required"]), ["style"])
         self.assertEqual(list(inputs["optional"]), ["cutout", "emoji", "retro", "cartoon", "empty"])
+        self.assertEqual(len(inputs["optional"]), 5)
+        self.assertEqual(inputs["hidden"], {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"})
         value_type, options = inputs["required"]["style"]
-        self.assertEqual(value_type, "STRING")
+        self.assertEqual(value_type, "*")
         self.assertFalse(options.get("lazy", False))
-        self.assertFalse(options["multiline"])
+        self.assertTrue(options["forceInput"])
+        self.assertNotIn("default", options)
 
-    def test_pe_inputs_are_lazy_text_widgets_without_dynamic_prompts(self):
+    def test_pe_inputs_are_lazy_sockets_without_text_widgets(self):
         inputs = STYLE_CLASS.INPUT_TYPES()
         for name, (value_type, options) in inputs["optional"].items():
             with self.subTest(name=name):
-                self.assertEqual(value_type, "STRING")
-                self.assertEqual(options["default"], "")
-                self.assertTrue(options["multiline"])
-                self.assertTrue(options["lazy"])
-                self.assertFalse(options["dynamicPrompts"])
-        self.assertFalse(inputs["required"]["style"][1]["dynamicPrompts"])
+                self.assertEqual(value_type, "*")
+                self.assertEqual(options, {"forceInput": True, "lazy": True})
+
+    def test_default_configuration_matches_requested_lowercase_names(self):
+        options = STYLE_CLASS.INPUT_TYPES()["required"]["style"][1]
+        names = options["dmcanvas_style_names"]
+        self.assertEqual(list(names), list(BRANCHES.values()))
+        self.assertEqual([aliases[0] for aliases in names.values()], list(BRANCHES))
+        self.assertEqual(names["empty"], ["none", ""])
+
+    def test_unconfigured_style_inputs_are_not_in_the_serialized_schema(self):
+        inputs = STYLE_CLASS.INPUT_TYPES()
+        serialized = json.loads(json.dumps(inputs))
+        self.assertEqual(list(serialized["optional"]), list(BRANCHES.values()))
+        self.assertNotIn("style_names", serialized["required"])
+        self.assertNotIn("style_1", serialized["optional"])
+        self.assertEqual(inputs["optional"]["style_12"], ("*", {"forceInput": True, "lazy": True}))
+        self.assertIn("style_12", inputs["optional"])
+        for name in ("style_0", "style_01", "unexpected"):
+            with self.subTest(name=name):
+                self.assertNotIn(name, inputs["optional"])
+                with self.assertRaises(KeyError):
+                    inputs["optional"][name]
+
+    def test_style_configuration_is_loaded_from_workflow_properties(self):
+        metadata = {"workflow": {"nodes": [{"id": 12, "properties": {"dmcanvas_style_names": {
+            "style_1": ["Watercolor"], "cartoon": ["Oil painting"],
+        }}}]}}
+        self.assertEqual(self.node.check_lazy_status("Watercolor", extra_pnginfo=metadata, unique_id="12", style_1=None), ["style_1"])
+        self.assertEqual(self.node.select("Watercolor", extra_pnginfo=metadata, unique_id="12", style_1="Selected"), ("Selected",))
+        self.assertEqual(self.node.select("Oil painting", extra_pnginfo=metadata, unique_id=12, cartoon="Oil PE"), ("Oil PE",))
+
+    def test_missing_metadata_uses_default_styles(self):
+        for metadata in (None, {}, {"workflow": {}}, {"workflow": {"nodes": []}}):
+            with self.subTest(metadata=metadata):
+                self.assertEqual(self.node.select("none", extra_pnginfo=metadata, unique_id="12", empty="Default"), ("Default",))
+
+    def test_workflow_properties_do_not_leak_between_nodes(self):
+        metadata = {"workflow": {"nodes": [{"id": 12, "properties": {"dmcanvas_style_names": {"cartoon": ["Oil painting"]}}}]}}
+        self.assertEqual(self.node.select("cartoon", extra_pnginfo=metadata, unique_id="13", cartoon="Other"), ("Other",))
+
+    def test_property_changes_do_not_reuse_cached_selector_output(self):
+        self.assertTrue(math.isnan(STYLE_CLASS.IS_CHANGED()))
+
+    def test_style_names_can_be_changed_without_changing_connections(self):
+        configuration = json.dumps({"cartoon": ["水彩"]})
+        self.assertEqual(self.node.select("style: 水彩", configuration, cartoon="Watercolor PE"), ("Watercolor PE",))
+        with self.assertRaisesRegex(ValueError, "不支持的 Style"):
+            self.node.select("Cartoon", configuration, cartoon="Watercolor PE")
+
+    def test_more_than_five_styles_can_be_added(self):
+        names = {f"style_{index}": [f"Custom {index}"] for index in range(1, 10)}
+        configuration = json.dumps(names)
+        prompts = {input_name: f"PE for {input_name}" for input_name in names}
+        for input_name, aliases in names.items():
+            with self.subTest(input_name=input_name):
+                self.assertEqual(self.node.select(aliases[0], configuration, **prompts), (prompts[input_name],))
+
+    def test_custom_styles_use_the_same_lazy_protocol(self):
+        configuration = json.dumps({"style_1": ["Watercolor"], "style_2": ["Pixel Art"]})
+        self.assertEqual(self.node.check_lazy_status("Watercolor", configuration, style_1=None, style_2=None), ["style_1"])
+        self.assertEqual(self.node.check_lazy_status("Watercolor", configuration), [])
+        self.assertEqual(self.node.select("Pixel Art", configuration, style_1=None, style_2="Pixel PE"), ("Pixel PE",))
+
+    def test_removed_style_is_not_selectable(self):
+        configuration = json.dumps({"style_1": ["Watercolor"]})
+        with self.assertRaisesRegex(ValueError, "不支持的 Style"):
+            self.node.select("Cartoon", configuration, cartoon="Unused", style_1="Watercolor")
+
+    def test_duplicate_normalized_style_names_are_rejected(self):
+        for aliases in ([" WaterColor "], ["WATERCOLOR"]):
+            with self.subTest(aliases=aliases):
+                configuration = json.dumps({"style_1": ["Watercolor"], "style_2": aliases})
+                with self.assertRaisesRegex(ValueError, "风格名称重复"):
+                    self.node.select("Watercolor", configuration)
+
+    def test_invalid_configuration_is_rejected_during_prompt_validation(self):
+        for configuration in (None, "", "[]", "null", '{"style_0":["New"]}', '{"cartoon":[]}', '{"cartoon":[1]}'):
+            with self.subTest(configuration=configuration):
+                self.assertIsInstance(STYLE_CLASS.VALIDATE_INPUTS(configuration), str)
+                with self.assertRaises(ValueError):
+                    self.node.select("Cartoon", configuration)
+        self.assertTrue(STYLE_CLASS.VALIDATE_INPUTS())
+        too_many = json.dumps({f"style_{index}": [f"Style {index}"] for index in range(1, 66)})
+        self.assertIn("64", STYLE_CLASS.VALIDATE_INPUTS(too_many))
+
+    def test_custom_empty_style_and_pe_preservation(self):
+        configuration = json.dumps({"style_1": [""], "style_2": ["手绘"]}, ensure_ascii=False)
+        self.assertEqual(self.node.select(" \n", configuration, style_1="Empty PE"), ("Empty PE",))
+        prompt = "\n手绘 {variable}\r\n  "
+        self.assertEqual(self.node.select("style：手绘", configuration, style_2=prompt), (prompt,))
 
     def test_each_case_selects_only_its_associated_text(self):
         for style, name in BRANCHES.items():
@@ -81,10 +170,22 @@ class StyleSelectorTests(unittest.TestCase):
             with self.subTest(style=style):
                 self.assertEqual(self.node.select(style, **self.prompts), (self.prompts[name],))
 
-    def test_only_empty_style_selects_empty_branch(self):
-        for style in ("", " ", "\t\n\r\u00a0", "style:", "style： "):
+    def test_none_and_empty_style_select_the_same_default_branch(self):
+        for style in ("none", "None", " NONE\n", "style: none", "STYLE： None", "", " ", "\t\n\r\u00a0", "style:", "style： "):
             with self.subTest(style=style):
                 self.assertEqual(self.node.select(style, **self.prompts), (self.prompts["empty"],))
+
+    def test_none_branch_uses_lazy_input_and_preserves_text(self):
+        self.assertEqual(self.node.check_lazy_status("none", empty=None, cartoon=None), ["empty"])
+        self.assertEqual(self.node.select("none", empty="空\n{subject}  "), ("空\n{subject}  ",))
+
+    def test_renamed_none_branch_does_not_keep_default_aliases(self):
+        configuration = json.dumps({"empty": ["plain"]})
+        self.assertEqual(self.node.select("plain", configuration, empty="Plain PE"), ("Plain PE",))
+        for style in ("none", ""):
+            with self.subTest(style=style):
+                with self.assertRaisesRegex(ValueError, "不支持的 Style"):
+                    self.node.select(style, configuration, empty="Plain PE")
 
     def test_selected_text_is_preserved_byte_for_byte(self):
         prompt = "\n  Example 中文 PE {name}\r\nstyle: unchanged\t\n"
@@ -108,7 +209,7 @@ class StyleSelectorTests(unittest.TestCase):
                     self.node.select(style, **self.prompts)
 
     def test_unknown_style_does_not_silently_select_default(self):
-        for style in ("Goofy", "watercolor", "none", "null", "cartoon, cutout", '{"style":"cartoon"}'):
+        for style in ("Goofy", "watercolor", "null", "cartoon, cutout", '{"style":"cartoon"}'):
             with self.subTest(style=style):
                 with self.assertRaisesRegex(ValueError, "不支持的 Style"):
                     self.node.select(style, **self.prompts)
