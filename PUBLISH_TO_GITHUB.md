@@ -4,7 +4,7 @@
 
 ## 更新已经创建的仓库
 
-- 仓库根目录必须包含 `__init__.py`、`nodes.py`、`style_selector.py`、`plugins/`。根目录的 ComfyUI 适配层缺一不可。
+- 仓库根目录必须包含 `__init__.py`、`nodes.py`、`style_selector.py`、`plugins/`、`web/`。前端扩展 `web/style_selector.js` 提供可扩展风格接口，不能遗漏。
 - 上传新增入口、节点接口、安装说明和测试，并更新根目录 README。
 - 将变更提交到 `main` 后，ByteArtist 插件下载入口选择 `branch`，填写 `main`。
 - 旧的纯 WEP commit 和早期独立 WEP ZIP 不会自动变为 ComfyUI 插件；应下载最新完整仓库。
@@ -28,7 +28,7 @@
 
 1. 如果仓库为空，在页面上选择 **uploading an existing file**；如果已有文件，选择 **Add file → Upload files**。
 2. 解压仓库 ZIP，打开里面的 `wep-conversation-tools` 文件夹。
-3. 拖入**文件夹里面的内容**：`__init__.py`、`nodes.py`、`style_selector.py`、`README.md`、`STYLE_SELECTOR.md`、本说明、`BYTEARTIST_INSTALL.md`、`plugins` 文件夹、`tests` 文件夹等。不要只上传 ZIP，也不要再套一层 `wep-conversation-tools` 目录。
+3. 拖入**文件夹里面的内容**：`__init__.py`、`nodes.py`、`style_selector.py`、`README.md`、`STYLE_SELECTOR.md`、本说明、`BYTEARTIST_INSTALL.md`、`plugins`、`web`、`tests` 文件夹等。不要只上传 ZIP，也不要再套一层 `wep-conversation-tools` 目录。
 4. 检查预览：仓库根目录应有 `__init__.py`、`nodes.py`、`README.md`；两个原始脚本应在 `plugins/` 的对应子目录中。
 5. Commit message 填：`Add ComfyUI style selector`。
 6. 点击 **Commit changes**。
@@ -47,6 +47,8 @@ wep-conversation-tools/
 ├── BYTEARTIST_INSTALL.md
 ├── PUBLISH_TO_GITHUB.md
 ├── .gitignore
+├── web/
+│   └── style_selector.js
 ├── plugins/
 │   ├── drawing-history-to-conversation/
 │   │   ├── drawing_history_to_conversation.py
@@ -61,7 +63,8 @@ wep-conversation-tools/
 └── tests/
     ├── test_comfyui_nodes.py
     ├── test_pipeline.py
-    └── test_style_selector.py
+    ├── test_style_selector.py
+    └── test_style_selector_frontend.mjs
 ```
 
 ## 第 4 步：检查展示与下载
