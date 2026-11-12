@@ -1,17 +1,72 @@
-# WEP Conversation Tools
+# ComfyUI Conversation Tools
 
-两个可独立使用的 WEP **Script / Inline Python** 节点，把绘画历史整理成 Conversation，再转换为下游可使用的 JSON。
+两个 ComfyUI **Custom Node**：绘画历史 → Conversation → 意图输入 JSON。仓库同时保留原来的 WEP **Script / Inline Python** 脚本，转换逻辑保持一致。
 
-Two standalone WEP Inline Python scripts for converting drawing history into conversations and structured JSON. Runtime logic uses only the Python standard library; WEP node registration requires the host-provided `workflow.decorators`.
+Two ComfyUI custom nodes for drawing history conversion and structured intent JSON, with the original standalone WEP Inline Python scripts preserved. No additional Python dependencies are required.
 
 ## 包含的节点
 
-| 节点 | 源码 | 作用 |
+| ComfyUI 节点 | 注册名称 | 作用 |
 | --- | --- | --- |
-| Drawing History to Conversation（绘画历史转换） | [drawing_history_to_conversation.py](plugins/drawing-history-to-conversation/drawing_history_to_conversation.py) | 原始绘画历史 → Conversation；同时输出 Warnings |
-| Intent Input JSON | [intent_input_json.py](plugins/intent-input-json/intent_input_json.py) | Conversation + 可选 Region / Style → JSON 字符串 |
+| Drawing History to Conversation · 绘画历史转换 | `DMCanvasDrawingHistoryToConversation` | 原始绘画历史 → Conversation；同时输出 Warnings |
+| Intent Input JSON | `DMCanvasIntentInputJSONWithMetadata` | Conversation + 可选 Region / Style → JSON 字符串 |
 
-这是截图所示 **WEP 脚本节点**的源码包，**不是 ComfyUI `custom_nodes` 插件**，也不是浏览器扩展或可通过 `pip install` 安装的包。没有 WEP 环境时仍可在本地调用转换函数，但不会出现 WEP 节点界面。未验证其他工作流平台的节点兼容性。
+ComfyUI 入口是仓库根目录的 [__init__.py](__init__.py)，节点接口在 [nodes.py](nodes.py)。两个节点都在 `DM Canvas/Conversation` 分类下。Intent 节点使用独立注册名称，避免覆盖早期只支持 Conversation 的 `DMCanvasIntentInputJSON` 插件。
+
+## 在 ByteArtist 插件库安装
+
+如果使用 Git 仓库下载 Custom Node 的入口，填写：
+
+- 仓库地址：`https://github.com/Alexxxkim/wep-conversation-tools.git`
+- 模式：`branch`
+- Branch：`main`
+
+也可以选择 `commit` 模式并留空，由下载入口取最新提交；固定 commit 时，必须使用**包含根目录 `__init__.py` 和 `nodes.py` 的新版提交**，旧的纯 WEP 提交不能作为 ComfyUI 插件加载。
+
+下载 / 更新后，按平台提供的操作安装到当前工作台，并重启或重新加载 ComfyUI 后端，再刷新页面、搜索上述节点。仅刷新网页不一定能加载新安装的 Python 节点。详细步骤与排查见 [BYTEARTIST_INSTALL.md](BYTEARTIST_INSTALL.md)。未在 ByteArtist 实际下载、安装或执行工作流。
+
+## 在本地 ComfyUI 安装
+
+在 ComfyUI 的 `custom_nodes` 目录执行：
+
+```sh
+git clone https://github.com/Alexxxkim/wep-conversation-tools.git
+```
+
+或下载仓库 ZIP，解压后将**整个仓库文件夹**放入 `ComfyUI/custom_nodes/`。结构必须是：
+
+```text
+ComfyUI/custom_nodes/wep-conversation-tools/
+├── __init__.py
+├── nodes.py
+└── plugins/
+    ├── drawing-history-to-conversation/drawing_history_to_conversation.py
+    └── intent-input-json/intent_input_json.py
+```
+
+不要只复制 `__init__.py`、`nodes.py` 或单个 `plugins/` 子目录；不要在插件目录里多套一层同名文件夹。无需 `pip install`，安装后重启 ComfyUI 后端。
+
+## ComfyUI 节点接口与连接
+
+| 节点 | 输入 | 输出 |
+| --- | --- | --- |
+| 绘画历史转换 | `text`（STRING） | `conversation`、`warnings`（STRING） |
+| Intent Input JSON | `conversation`（STRING）；可选 `region`、`style`（STRING） | `json`（STRING） |
+
+所有输入均可在节点里直接填写文本。需要从 Text / Script 等上游节点连接时，在节点菜单里将对应文本控件转换为输入端口；不同前端的菜单名称可能为 **Convert widget to input** 或 **转换为输入**。
+
+```text
+历史对话文本 → 绘画历史转换.text
+                  conversation → Intent Input JSON.conversation → JSON 预览 / 下游 LLM
+                  warnings     → 文本预览（可选）
+
+[locale=zh-CN] → Intent Input JSON.region（可选）
+style: cartoon → Intent Input JSON.style（可选）
+```
+
+Region / Style 留空时省略对应 JSON 字段。图片编号、取消 / 失败状态、用户正文保留和异常输入校验沿用原有逻辑。绘画历史为空时返回空字符串；Intent 的 Conversation 为空或格式不合法时仍报错，不补造用户请求。
+
+两个节点只处理文本与图片编号，**不上传图片、不调用模型、不执行网络请求**。图片内容仍需在工作流中另行传入。
 
 ## 在 WEP 中使用
 
@@ -19,6 +74,8 @@ Two standalone WEP Inline Python scripts for converting drawing history into con
 2. 打开绘画历史转换的 `.py` 文件，复制全部内容，包括装饰器，粘贴到节点中。
 3. 再添加一个 **Script / Inline Python** 节点，粘贴 Intent Input JSON 的完整 `.py` 文件。
 4. 确认端口按下图连接；Region 和 Style 可不连接。
+
+WEP 需要平台提供的 `workflow.decorators`。原始脚本分别是 [drawing_history_to_conversation.py](plugins/drawing-history-to-conversation/drawing_history_to_conversation.py) 和 [intent_input_json.py](plugins/intent-input-json/intent_input_json.py)，仍可完整复制到 Inline Python。各子目录及之前的独立 WEP ZIP 不是单独的 ComfyUI 安装包。
 
 ```text
 历史对话 Text
@@ -44,7 +101,7 @@ python3 -B -m unittest discover -s plugins/intent-input-json/tests -v
 python3 -B -m unittest discover -s tests -v
 ```
 
-这些测试验证转换逻辑与两节点串联，不代表已在每个 WEP 版本中验证界面行为。各插件目录内提供接口说明、独立测试和虚构示例。
+这些测试验证转换逻辑、两节点串联，以及按 ComfyUI 的包加载方式导入、节点注册、STRING 输入输出和可选字段；不代表已在每个 ComfyUI / WEP / ByteArtist 版本中实测界面或安装行为。各插件目录内提供接口说明、独立测试和虚构示例。
 
 ## 公开发布范围
 
